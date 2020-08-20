@@ -49,8 +49,8 @@ while True:
     mask = cv2.erode(mask, None, iterations=2)         # retire les parasites
     mask = cv2.dilate(mask, None, iterations=2)        # retire les parasites
     
-    cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-    cnts = cnts[0] if imutils.is_cv2() else cnts[1]
+    # contours
+    cnts, hierarchy = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     center = None
     
     if len(cnts) > 0:

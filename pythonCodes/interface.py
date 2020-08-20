@@ -8,9 +8,14 @@ from PIL import Image, ImageTk
 import serial
 import serial.tools.list_ports
 from math import *
+import os
+import sys
 
 
-lines = open("/Users/johanlink/Desktop/TM/python/data.txt").read().splitlines()
+dataPath = os.path.join(os.path.dirname(sys.argv[0]), "data.txt")
+print(dataPath)
+with open(dataPath, 'r') as f:
+    lines = f.read().splitlines()
 lines = lines[:-11]     #enlève les 11 dernières lignes du fichier
 lines = lines[1:]       #enlève la première ligne du fichier
 
@@ -225,23 +230,23 @@ def donothing():
 
 def rangerPlateau():
     if arduinoIsConnected == True:
-        if tkinter.messagebox.askokcancel("Avertissement", "Pensez à retirer le plateau."):
-            print("abaissement des bras")
+        if tkinter.messagebox.askokcancel("Avertissement", "Remember to remove the plate"):
+            print("lowering arms")
             ser.write(("descendreBras\n").encode())
     else:
-        if tkinter.messagebox.askokcancel("Avertissement","L'Arduino n'est pas connecté"):
+        if tkinter.messagebox.askokcancel("Avertissement","Arduino is not connected"):
             donothing()
 
 
 def eleverPlateau():
     global alpha
     if arduinoIsConnected == True:
-        if tkinter.messagebox.askokcancel("Avertissement", "Pensez à retirer le plateau."):
-            print("Elevation des bras")
+        if tkinter.messagebox.askokcancel("Avertissement", "Remember to remove the plate"):
+            print("Raising arms")
             ser.write((str(dataDict[(0,0)])+"\n").encode())
             alpha = 0
     else:
-        if tkinter.messagebox.askokcancel("Avertissement","L'Arduino n'est pas connecté"):
+        if tkinter.messagebox.askokcancel("Avertissement","Arduino is not connected"):
             donothing()
 
 def servosTest():
@@ -270,11 +275,12 @@ def connectArduino():
     global arduinoIsConnected
     ports = list(serial.tools.list_ports.comports())
     for p in ports:
-        if "Arduino" in p.description:
-            print(p)
+        print("checking port %s" % p)
+        if "Arduino" in p.description or 'FT232' in p.description:
+            print('connecting port %s' % p)
             ser = serial.Serial(p[0], 19200, timeout=1)
             time.sleep(1) #give the connection a second to settle
-            label.configure(text="Arduino connecté", fg="#36db8b")
+            label.configure(text="Arduino connected", fg="#36db8b")
             arduinoIsConnected = True
 
 startBalanceBall = False
@@ -417,8 +423,7 @@ def main():
     mask = cv2.erode(mask, None, iterations=2)         # retire les parasites
     mask = cv2.dilate(mask, None, iterations=2)        # retire les parasites
     
-    cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-    cnts = cnts[0] if imutils.is_cv2() else cnts[1]
+    cnts, hierarchy = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     center = None
 
     cv2.circle(img, (int(consigneX), int(consigneY)), int(4),(255, 0, 0), 2)
@@ -445,7 +450,7 @@ def main():
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(img)
         imgtk = ImageTk.PhotoImage(image=img)
-        lmain.imgtk = imgtk
+        lmain.image = imgtk
         lmain.configure(image=imgtk)
     lmain.after(5, main)
 
@@ -463,9 +468,9 @@ def main():
 
 
 
-FrameVideoControl = tk.LabelFrame(controllerWindow, text="Vidéo contrôle")
+FrameVideoControl = tk.LabelFrame(controllerWindow, text="Camera control")
 FrameVideoControl.place(x=20,y=20,width=380)
-BRetourVideo = tk.Button(FrameVideoControl, text="Afficher le retour vidéo", command=showCameraFrameWindow)
+BRetourVideo = tk.Button(FrameVideoControl, text="Open camera preview", command=showCameraFrameWindow)
 BRetourVideo.pack()
 BPositionCalibration = tk.Button(FrameVideoControl, text="Calque", command=showCalqueCalibration)
 BPositionCalibration.place(x=290,y=0)
@@ -482,22 +487,22 @@ sliderV.pack()
 
 
 
-FrameServosControl = tk.LabelFrame(controllerWindow, text="Servos contrôle")
+FrameServosControl = tk.LabelFrame(controllerWindow, text="Servo control")
 FrameServosControl.place(x=20,y=315,width=380)
-BAbaissementPlateau = tk.Button(FrameServosControl, text="Ranger les bras", command=rangerPlateau)
+BAbaissementPlateau = tk.Button(FrameServosControl, text="Lower plate", command=rangerPlateau)
 BAbaissementPlateau.pack()
-BElevationBras = tk.Button(FrameServosControl, text="Mettre en place le plateau", command=eleverPlateau)
+BElevationBras = tk.Button(FrameServosControl, text="Raise plate", command=eleverPlateau)
 BElevationBras.pack()
-BTesterServos = tk.Button(FrameServosControl, text="Tester les servomoteurs", command=servosTest)
+BTesterServos = tk.Button(FrameServosControl, text="Test servos", command=servosTest)
 BTesterServos.pack()
-BStartBalance = tk.Button(FrameServosControl, text="Démarrer", command=startBalance, highlightbackground = "#36db8b")
+BStartBalance = tk.Button(FrameServosControl, text="Start", command=startBalance, highlightbackground = "#36db8b")
 BStartBalance.pack()
 
 
 
 FramePIDCoef = tk.LabelFrame(controllerWindow, text="PID coefficients")
 FramePIDCoef.place(x=420,y=20,width=380)
-BafficherGraph = tk.Button(FramePIDCoef, text="Afficher graphique", command=showGraphWindow)
+BafficherGraph = tk.Button(FramePIDCoef, text="Show graph", command=showGraphWindow)
 BafficherGraph.pack()
 sliderCoefP = tk.Scale(FramePIDCoef, from_=0, to=15, orient="horizontal", label="P", length=350, tickinterval = 3, resolution=0.01)
 sliderCoefP.set(sliderCoefPDefault)
@@ -510,7 +515,7 @@ sliderCoefD.set(sliderCoefDDefault)
 sliderCoefD.pack()
 
 
-FrameBallControl = tk.LabelFrame(controllerWindow, text="Bille contrôle")
+FrameBallControl = tk.LabelFrame(controllerWindow, text="Ball control")
 FrameBallControl.place(x=420,y=315,width=380, height= 132)
 BballDrawCircle = tk.Button(FrameBallControl, text="Faire tourner la bille en cercle", command=startDrawCircle)
 BballDrawCircle.pack()
@@ -520,13 +525,13 @@ BballDrawEight.pack()
 
 
 
-label = tk.Label(controllerWindow, text="Arduino déconnecté  ", fg="red", anchor="ne")
+label = tk.Label(controllerWindow, text="Arduino disconnected  ", fg="red", anchor="ne")
 label.pack(fill="both")
 BReset = tk.Button(controllerWindow, text = "Reset", command = resetSlider)
 BReset.place(x=20, y=460)
-BConnect = tk.Button(controllerWindow, text = "Connexion", command = connectArduino, background="black")
+BConnect = tk.Button(controllerWindow, text = "Connect", command = connectArduino, background="black")
 BConnect.place(x=100, y=460)
-BQuit = tk.Button(controllerWindow, text = "Quitter", command = endProgam)
+BQuit = tk.Button(controllerWindow, text = "Quit", command = endProgam)
 BQuit.place(x=730, y=460)
 
 
