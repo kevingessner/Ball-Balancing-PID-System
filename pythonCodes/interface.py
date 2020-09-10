@@ -452,7 +452,6 @@ def main():
         imgtk = ImageTk.PhotoImage(image=img)
         lmain.image = imgtk
         lmain.configure(image=imgtk)
-    lmain.after(5, main)
 
     drawWithBall()
     if prevConsigneX != consigneX or prevConsigneY != consigneY:
@@ -465,6 +464,10 @@ def main():
     prevBeta = beta
 
     print("FPS: ", 1.0 / (time.time() - start_timeFPS))
+
+    lmain.update()
+    lmain.after_idle(main)
+    #lmain.after(50, main)
 
 
 
