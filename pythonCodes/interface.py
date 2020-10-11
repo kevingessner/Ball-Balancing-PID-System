@@ -16,8 +16,8 @@ dataPath = os.path.join(os.path.dirname(sys.argv[0]), "data.txt")
 print(dataPath)
 with open(dataPath, 'r') as f:
     lines = f.read().splitlines()
-lines = lines[:-11]     #enlève les 11 dernières lignes du fichier
-lines = lines[1:]       #enlève la première ligne du fichier
+lines = lines[:-11]     #last 11 lines are comments
+lines = lines[1:]       #first line is header
 
 dataDict = {}
 
@@ -39,27 +39,27 @@ for i in range(0,len(lines)):
     dataDict[(float(alpha),float(beta))] = (float(angleA), float(angleB), float(angleC))
 
 controllerWindow = tk.Tk()
-controllerWindow.title("fenêtre de contrôle")
+controllerWindow.title("Control")
 controllerWindow.geometry("820x500")
 controllerWindow["bg"]="white"
 controllerWindow.resizable(0, 0)
 
 videoWindow = tk.Toplevel(controllerWindow)
-videoWindow.title("retour caméra")
-videoWindow.resizable(0, 0)  #empeche de modifier les dimensions de la fenêtre
+videoWindow.title("Preview")
+videoWindow.resizable(0, 0)  # window will resize to the image size
 lmain = tk.Label(videoWindow)
 lmain.pack()
 videoWindow.withdraw()
 
 graphWindow = tk.Toplevel(controllerWindow)
-graphWindow.title("Position en fonction du temps")
+graphWindow.title("Position history")
 graphWindow.resizable(0, 0)
-graphCanvas = tk.Canvas(graphWindow,width=camHeight+210,height=camHeight)
+graphCanvas = tk.Canvas(graphWindow, width=camHeight+210, height=camHeight)
 graphCanvas.pack()
 graphWindow.withdraw()
 
 pointsListCircle = []
-def createPointsListCircle(rayon):
+def createPointsListCircle(rayon): # radius?
     global pointsListCircle
     for angle in range(0,360):
         angle=angle-90
@@ -67,7 +67,7 @@ def createPointsListCircle(rayon):
 createPointsListCircle(150)
 
 pointsListEight = []
-def createPointsListEight(rayon):
+def createPointsListEight(rayon): # radius?
     global pointsListEight
     for angle in range(270,270+360):
         pointsListEight.append([rayon*cos(radians(angle))+240,rayon*sin(radians(angle))+240+rayon])
@@ -78,52 +78,52 @@ createPointsListEight(80)
 
 drawCircleBool = False
 def startDrawCircle():
-    global drawCircleBool, drawEightBool, consigneX, consigneY
+    global drawCircleBool, drawEightBool, targetX, targetY
     if drawCircleBool == False:
         drawCircleBool = True
         BballDrawCircle["text"] = "Centrer la bille"
     else:
         drawCircleBool = False
-        consigneX, consigneY = 240, 240
+        targetX, targetY = 240, 240
         sliderCoefP.set(sliderCoefPDefault)
         BballDrawCircle["text"] = "Faire tourner la bille en cercle"
 
 drawEightBool = False
 def startDrawEight():
-    global drawEightBool, drawCircleBool, consigneX, consigneY
+    global drawEightBool, drawCircleBool, targetX, targetY
     if drawEightBool == False:
         drawEightBool = True
         BballDrawEight["text"] = "Centrer la bille"
     else:
         drawEightBool = False
-        consigneX, consigneY = 240, 240
+        targetX, targetY = 240, 240
         sliderCoefP.set(sliderCoefPDefault)
         BballDrawEight["text"] = "Faire tourner la bille en huit"
 
 pointCounter = 0
 def drawWithBall():
-    global pointCounter, consigneX, consigneY
+    global pointCounter, targetX, targetY
     if drawCircleBool == True:
         sliderCoefP.set(15)
         if pointCounter >= len(pointsListCircle):
             pointCounter = 0
         point = pointsListCircle[pointCounter]
-        consigneX, consigneY = point[0], point[1]
+        targetX, targetY = point[0], point[1]
         pointCounter += 7
     if drawEightBool == True:
         sliderCoefP.set(15)
         if pointCounter >= len(pointsListEight):
             pointCounter = 0
         point = pointsListEight[pointCounter]
-        consigneX, consigneY = point[0], point[1]
+        targetX, targetY = point[0], point[1]
         pointCounter += 7
 
 
-def setConsigneWithMouse(mousePosition):
-    global consigneX, consigneY
+def setTargetWithMouse(mousePosition):
+    global targetX, targetY
     if mousePosition.y > 10:
         refreshGraph()
-        consigneX,consigneY = mousePosition.x,mousePosition.y
+        targetX,targetY = mousePosition.x,mousePosition.y
 
 
 def getMouseClickPosition(mousePosition):
@@ -171,10 +171,10 @@ def showGraphWindow():
         BafficherGraph["text"] = "Afficher graphique"
 
 t = 480
-consigneY = 240
-consigneX = 240
+targetY = 240
+targetX = 240
 def paintGraph():
-    global t,consigneY,x,y,prevX,prevY,alpha,prevAlpha
+    global t,targetY,x,y,prevX,prevY,alpha,prevAlpha
     global showGraphPositionX,showGraphPositionY, showGraphAlpha
     if showGraph == True:
         graphWindow.deiconify()
@@ -195,9 +195,9 @@ def paintGraph():
             graphCanvas.create_line(550,53,740,53,fill="#0069b5", width=5)
             graphCanvas.create_line(550,73,740,73,fill="#8f0caf", width=5)
             if showGraphPositionX.get() == 1:
-                graphCanvas.create_line(3,consigneX,480,consigneX,fill="#ff7777", width=2)
+                graphCanvas.create_line(3,targetX,480,targetX,fill="#ff7777", width=2)
             if showGraphPositionY.get() == 1:
-                graphCanvas.create_line(3,consigneY,480,consigneY,fill="#6f91f7", width=2)
+                graphCanvas.create_line(3,targetY,480,targetY,fill="#6f91f7", width=2)
         t += 3
     else:
         graphWindow.withdraw()
@@ -302,7 +302,7 @@ sommeErreurY = 1
 timeInterval = 1
 alpha, beta, prevAlpha, prevBeta = 0,0,0,0
 omega = 0.2
-def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, consigneX, consigneY):
+def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY):
     global omega
     global sommeErreurX, sommeErreurY
     global alpha, beta, prevAlpha, prevBeta
@@ -312,8 +312,8 @@ def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, consigneX, consig
     Ki = sliderCoefI.get()
     Kd = sliderCoefD.get()
 
-    Ix = Kp*(consigneX-ballPosX) + Ki*sommeErreurX + Kd*((prevBallPosX-ballPosX)/0.0333)
-    Iy = Kp*(consigneY-ballPosY) + Ki*sommeErreurY + Kd*((prevBallPosY-ballPosY)/0.0333)
+    Ix = Kp*(targetX-ballPosX) + Ki*sommeErreurX + Kd*((prevBallPosX-ballPosX)/0.0333)
+    Iy = Kp*(targetY-ballPosY) + Ki*sommeErreurY + Kd*((prevBallPosY-ballPosY)/0.0333)
     
     Ix = round(Ix/10000, 4)
     Iy = round(Iy/10000, 4)
@@ -380,20 +380,20 @@ def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, consigneX, consig
     print(Ix,Iy,alpha,beta,ballPosX,ballPosY,prevBallPosX,prevBallPosY,sommeErreurX,sommeErreurY)
 
     if startBalanceBall == True:
-        sommeErreurX += (consigneX-ballPosX)
-        sommeErreurY += (consigneY-ballPosY)
+        sommeErreurX += (targetX-ballPosX)
+        sommeErreurY += (targetY-ballPosY)
 
 
 prevX,prevY = 0,0
-prevConsigneX, prevConsigneY = 0,0
+prevTargetX, prevTargetY = 0,0
 start_time = 0
 def main():
     start_timeFPS = time.time()
     global H,S,V
     global getPixelColor
     global x,y, alpha, beta
-    global prevX, prevY, prevAlpha, prevBeta, prevConsigneX, prevConsigneY
-    global consigneX, consigneY, sommeErreurX, sommeErreurY
+    global prevX, prevY, prevAlpha, prevBeta, prevTargetX, prevTargetY
+    global targetX, targetY, sommeErreurX, sommeErreurY
     global camWidth,camHeight
     global timeInterval, start_time
     global showVideoWindow
@@ -426,7 +426,7 @@ def main():
     cnts, hierarchy = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     center = None
 
-    cv2.circle(img, (int(consigneX), int(consigneY)), int(4),(255, 0, 0), 2)
+    cv2.circle(img, (int(targetX), int(targetY)), int(4),(255, 0, 0), 2)
     if showCalqueCalibrationBool == True:
         cv2.circle(img, (240,240), 220,(255, 0, 0), 2)
         cv2.circle(img, (240,240), 160,(255, 0, 0), 2)
@@ -440,7 +440,7 @@ def main():
         if radius > 10:
             cv2.putText(img,str(int(x)) + ";" + str(int(y)).format(0, 0),(int(x)-50, int(y)-50), cv2.FONT_HERSHEY_SIMPLEX,1, (255, 255, 255), 2)
             cv2.circle(img, (int(x), int(y)), int(radius),(0, 255, 255), 2)
-            PIDcontrol(int(x),int(y),prevX,prevY,consigneX,consigneY)
+            PIDcontrol(int(x),int(y),prevX,prevY,targetX,targetY)
             start_time = time.time()
     else:
         sommeErreurX, sommeErreurY = 0,0
@@ -454,12 +454,12 @@ def main():
         lmain.configure(image=imgtk)
 
     drawWithBall()
-    if prevConsigneX != consigneX or prevConsigneY != consigneY:
+    if prevTargetX != targetX or prevTargetY != targetY:
         sommeErreurX, sommeErreurY = 0,0
 
     paintGraph()
     prevX,prevY = int(x), int(y)
-    prevConsigneX, prevConsigneY = consigneX, consigneY
+    prevTargetX, prevTargetY = targetX, targetY
     prevAlpha = alpha
     prevBeta = beta
 
@@ -540,21 +540,21 @@ BQuit.place(x=730, y=460)
 
 showGraphPositionX = tk.IntVar()
 showGraphPositionX.set(1)
-CheckbuttonPositionX = tk.Checkbutton(graphWindow, text="Position en X", variable=showGraphPositionX, command=refreshGraph)
+CheckbuttonPositionX = tk.Checkbutton(graphWindow, text="X", variable=showGraphPositionX, command=refreshGraph)
 CheckbuttonPositionX.place(x=500,y=20)
 showGraphPositionY = tk.IntVar()
 showGraphPositionY.set(1)
-CheckbuttonPositionY = tk.Checkbutton(graphWindow, text="Position en Y", variable=showGraphPositionY, command=refreshGraph)
+CheckbuttonPositionY = tk.Checkbutton(graphWindow, text="X", variable=showGraphPositionY, command=refreshGraph)
 CheckbuttonPositionY.place(x=500,y=40)
 showGraphAlpha = tk.IntVar()
-CheckbuttonAlpha = tk.Checkbutton(graphWindow, text="Inclinaison du plateau", variable=showGraphAlpha, command=refreshGraph)
+CheckbuttonAlpha = tk.Checkbutton(graphWindow, text="Plate angle", variable=showGraphAlpha, command=refreshGraph)
 CheckbuttonAlpha.place(x=500,y=60)
 
 
 
 videoWindow.protocol("WM_DELETE_WINDOW",donothing)
 videoWindow.bind("<Button-2>",getMouseClickPosition)
-videoWindow.bind("<Button-1>",setConsigneWithMouse)
+videoWindow.bind("<Button-1>",setTargetWithMouse)
 
 main()
 tk.mainloop()
