@@ -13,7 +13,7 @@ import sys
 
 
 dataPath = os.path.join(os.path.dirname(sys.argv[0]), "data.txt")
-print(dataPath)
+print("Loading %s" % dataPath)
 with open(dataPath, 'r') as f:
     lines = f.read().splitlines()
 lines = lines[:-11]     #last 11 lines are comments
@@ -377,7 +377,7 @@ def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY)
         ser.write((str(dataDict[(alpha,beta)])+"\n").encode())
 
     #print(alpha, beta)
-    print(Ix,Iy,alpha,beta,ballPosX,ballPosY,prevBallPosX,prevBallPosY,sommeErreurX,sommeErreurY)
+    #print(Ix,Iy,alpha,beta,ballPosX,ballPosY,prevBallPosX,prevBallPosY,sommeErreurX,sommeErreurY)
 
     if startBalanceBall == True:
         sommeErreurX += (targetX-ballPosX)
@@ -387,15 +387,16 @@ def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY)
 prevX,prevY = 0,0
 prevTargetX, prevTargetY = 0,0
 start_time = 0
+lastFPSUpdateTime = 0
+framesSinceUpdate = 0
 def main():
-    start_timeFPS = time.time()
     global H,S,V
     global getPixelColor
     global x,y, alpha, beta
     global prevX, prevY, prevAlpha, prevBeta, prevTargetX, prevTargetY
     global targetX, targetY, sommeErreurX, sommeErreurY
     global camWidth,camHeight
-    global timeInterval, start_time
+    global timeInterval, start_time, lastFPSUpdateTime, framesSinceUpdate
     global showVideoWindow
     
     _, img=cam.read()
@@ -463,7 +464,13 @@ def main():
     prevAlpha = alpha
     prevBeta = beta
 
-    print("FPS: ", 1.0 / (time.time() - start_timeFPS))
+    framesSinceUpdate += 1
+    now = time.time()
+    if now > lastFPSUpdateTime + 1.0:
+        fps = float(framesSinceUpdate) / (now - lastFPSUpdateTime)
+        FPSLabel.configure(text="%0.1f FPS" % (fps))
+        lastFPSUpdateTime = now
+        framesSinceUpdate = 0
 
     lmain.update()
     lmain.after_idle(main)
@@ -473,10 +480,15 @@ def main():
 
 FrameVideoControl = tk.LabelFrame(controllerWindow, text="Camera control")
 FrameVideoControl.place(x=20,y=20,width=380)
-BRetourVideo = tk.Button(FrameVideoControl, text="Open camera preview", command=showCameraFrameWindow)
-BRetourVideo.pack()
-BPositionCalibration = tk.Button(FrameVideoControl, text="Calque", command=showCalqueCalibration)
-BPositionCalibration.place(x=290,y=0)
+
+FrameVideoInfo = tk.Frame(FrameVideoControl)
+FPSLabel = tk.Label(FrameVideoInfo, text="FPS", anchor=tk.NW, pady=0)
+FPSLabel.pack(side=tk.LEFT, anchor=tk.W, padx=15, expand=True)
+BRetourVideo = tk.Button(FrameVideoInfo, text="Open camera preview", command=showCameraFrameWindow)
+BRetourVideo.pack(side=tk.LEFT)
+BPositionCalibration = tk.Button(FrameVideoInfo, text="Calque", command=showCalqueCalibration)
+BPositionCalibration.pack(side=tk.LEFT, anchor=tk.E, padx=15)
+FrameVideoInfo.pack(fill=tk.X)
 
 sliderH = tk.Scale(FrameVideoControl, from_=0, to=100, orient="horizontal", label="Sensibilité H", length=350, tickinterval = 10)
 sliderH.set(sliderHDefault)
