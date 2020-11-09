@@ -133,21 +133,9 @@ def getMouseClickPosition(mousePosition):
     getPixelColor = True
 
 showVideoWindow = False
-def showCameraFrameWindow():
-    global showVideoWindow, showGraph
-    global BRetourVideoTxt
-    if showVideoWindow == False:
-        if showGraph == True:
-            graphWindow.withdraw()
-            showGraph = False
-            BafficherGraph["text"] = "Afficher graphique"
-        videoWindow.deiconify()
-        showVideoWindow = True
-        BRetourVideo["text"] = "Cacher le retour vidéo "
-    else:
-        videoWindow.withdraw()
-        showVideoWindow = False
-        BRetourVideo["text"] = "Afficher le retour vidéo"
+def toggleCameraFrameWindow():
+    global showVideoWindow
+    showVideoWindow = not showVideoWindow
 
 showCalqueCalibrationBool = False
 def showCalqueCalibration():
@@ -155,20 +143,11 @@ def showCalqueCalibration():
     showCalqueCalibrationBool = not showCalqueCalibrationBool
 
 showGraph = False
-def showGraphWindow():
-    global showGraph, showVideoWindow
-    global BafficherGraph
-    
-    if showGraph == False:
-        if showVideoWindow == True:
-            videoWindow.withdraw()
-            showVideoWindow = False
-            BRetourVideo["text"] = "Afficher le retour vidéo"
-        showGraph = True
-        BafficherGraph["text"] = "Cacher graphique "
-    else:
-        showGraph = False
-        BafficherGraph["text"] = "Afficher graphique"
+def toggleGraphWindow():
+    global showGraph
+    showGraph = not showGraph
+graphWindow.protocol("WM_DELETE_WINDOW", toggleGraphWindow)
+
 
 t = 480
 targetY = 240
@@ -176,8 +155,9 @@ targetX = 240
 def paintGraph():
     global t,targetY,x,y,prevX,prevY,alpha,prevAlpha
     global showGraphPositionX,showGraphPositionY, showGraphAlpha
-    if showGraph == True:
+    if showGraph:
         graphWindow.deiconify()
+        BafficherGraph.configure(text="Hide graph")
         if showGraphPositionX.get() == 1:
             graphCanvas.create_line(t-3,prevX,t,x, fill="#b20000", width=2)
         if showGraphPositionY.get() == 1:
@@ -201,6 +181,7 @@ def paintGraph():
         t += 3
     else:
         graphWindow.withdraw()
+        BafficherGraph.configure(text="Show graph")
 
 def refreshGraph():
     global t
@@ -397,7 +378,6 @@ def main():
     global targetX, targetY, sommeErreurX, sommeErreurY
     global camWidth,camHeight
     global timeInterval, start_time, lastFPSUpdateTime, framesSinceUpdate
-    global showVideoWindow
     
     _, img=cam.read()
     img = img[0:int(camHeight),int((camWidth-camHeight)/2):int(camWidth-((camWidth-camHeight)/2))] #[Y1:Y2,X1:X2]
@@ -446,13 +426,17 @@ def main():
     else:
         sommeErreurX, sommeErreurY = 0,0
 
-
-    if showVideoWindow == True:
+    if showVideoWindow:
+        videoWindow.deiconify()
+        BRetourVideo.configure(text="Close camera preview")
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(img)
         imgtk = ImageTk.PhotoImage(image=img)
         lmain.image = imgtk
         lmain.configure(image=imgtk)
+    else:
+        videoWindow.withdraw()
+        BRetourVideo.configure(text="Open camera preview")
 
     drawWithBall()
     if prevTargetX != targetX or prevTargetY != targetY:
@@ -484,19 +468,19 @@ FrameVideoControl.place(x=20,y=20,width=380)
 FrameVideoInfo = tk.Frame(FrameVideoControl)
 FPSLabel = tk.Label(FrameVideoInfo, text="FPS", anchor=tk.NW, pady=0)
 FPSLabel.pack(side=tk.LEFT, anchor=tk.W, padx=15, expand=True)
-BRetourVideo = tk.Button(FrameVideoInfo, text="Open camera preview", command=showCameraFrameWindow)
+BRetourVideo = tk.Button(FrameVideoInfo, text="", command=toggleCameraFrameWindow)
 BRetourVideo.pack(side=tk.LEFT)
 BPositionCalibration = tk.Button(FrameVideoInfo, text="Calque", command=showCalqueCalibration)
 BPositionCalibration.pack(side=tk.LEFT, anchor=tk.E, padx=15)
 FrameVideoInfo.pack(fill=tk.X)
 
-sliderH = tk.Scale(FrameVideoControl, from_=0, to=100, orient="horizontal", label="Sensibilité H", length=350, tickinterval = 10)
+sliderH = tk.Scale(FrameVideoControl, from_=0, to=100, orient="horizontal", label="Sensitivity H", length=350, tickinterval = 10)
 sliderH.set(sliderHDefault)
 sliderH.pack()
-sliderS = tk.Scale(FrameVideoControl, from_=0, to=100, orient="horizontal", label="Sensibilité S", length=350, tickinterval = 10)
+sliderS = tk.Scale(FrameVideoControl, from_=0, to=100, orient="horizontal", label="Sensitivity S", length=350, tickinterval = 10)
 sliderS.set(sliderSDefault)
 sliderS.pack()
-sliderV = tk.Scale(FrameVideoControl, from_=0, to=100, orient="horizontal", label="Sensibilité V", length=350, tickinterval = 10)
+sliderV = tk.Scale(FrameVideoControl, from_=0, to=100, orient="horizontal", label="Sensitivity V", length=350, tickinterval = 10)
 sliderV.set(sliderVDefault)
 sliderV.pack()
 
@@ -517,7 +501,7 @@ BStartBalance.pack()
 
 FramePIDCoef = tk.LabelFrame(controllerWindow, text="PID coefficients")
 FramePIDCoef.place(x=420,y=20,width=380)
-BafficherGraph = tk.Button(FramePIDCoef, text="Show graph", command=showGraphWindow)
+BafficherGraph = tk.Button(FramePIDCoef, text="", command=toggleGraphWindow)
 BafficherGraph.pack()
 sliderCoefP = tk.Scale(FramePIDCoef, from_=0, to=15, orient="horizontal", label="P", length=350, tickinterval = 3, resolution=0.01)
 sliderCoefP.set(sliderCoefPDefault)
@@ -564,11 +548,16 @@ CheckbuttonAlpha.place(x=500,y=60)
 
 
 
-videoWindow.protocol("WM_DELETE_WINDOW",donothing)
-videoWindow.bind("<Button-2>",getMouseClickPosition)
-videoWindow.bind("<Button-1>",setTargetWithMouse)
+videoWindow.protocol("WM_DELETE_WINDOW", toggleCameraFrameWindow)
+videoWindow.bind("<Button-2>", getMouseClickPosition)
+videoWindow.bind("<Button-1>", setTargetWithMouse)
 
 main()
+# Force the main window to the top
+# TODO make it focussed
+controllerWindow.call('wm', 'attributes', '.', '-topmost', '1')
+controllerWindow.call('wm', 'attributes', '.', '-topmost', '0')
+
 tk.mainloop()
 
 
