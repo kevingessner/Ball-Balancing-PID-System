@@ -38,11 +38,19 @@ for i in range(0,len(lines)):
     angleA, angleB, angleC = value.split("|")
     dataDict[(float(alpha),float(beta))] = (float(angleA), float(angleB), float(angleC))
 
+MODE_HOLD_ON_TARGET = 'hold'
+MODE_CIRCLE = 'circle'
+MODE_EIGHT = 'eight'
+
+
 controllerWindow = tk.Tk()
 controllerWindow.title("Control")
 controllerWindow.geometry("820x500")
 controllerWindow["bg"]="white"
 controllerWindow.resizable(0, 0)
+
+BallMovementMode = tk.StringVar()
+BallMovementMode.set(MODE_HOLD_ON_TARGET)
 
 videoWindow = tk.Toplevel(controllerWindow)
 videoWindow.title("Preview")
@@ -59,58 +67,34 @@ graphCanvas.pack()
 graphWindow.withdraw()
 
 pointsListCircle = []
-def createPointsListCircle(rayon): # radius?
+def createPointsListCircle(radius):
     global pointsListCircle
     for angle in range(0,360):
         angle=angle-90
-        pointsListCircle.append([rayon*cos(radians(angle))+240,rayon*sin(radians(angle))+240])
+        pointsListCircle.append([radius*cos(radians(angle))+240,radius*sin(radians(angle))+240])
 createPointsListCircle(150)
 
 pointsListEight = []
-def createPointsListEight(rayon): # radius?
+def createPointsListEight(radius):
     global pointsListEight
     for angle in range(270,270+360):
-        pointsListEight.append([rayon*cos(radians(angle))+240,rayon*sin(radians(angle))+240+rayon])
+        pointsListEight.append([radius*cos(radians(angle))+240,radius*sin(radians(angle))+240+radius])
     for angle in range(360,0,-1):
         angle=angle+90
-        pointsListEight.append([rayon*cos(radians(angle))+240,rayon*sin(radians(angle))+240-rayon])
+        pointsListEight.append([radius*cos(radians(angle))+240,radius*sin(radians(angle))+240-radius])
 createPointsListEight(80)
 
-drawCircleBool = False
-def startDrawCircle():
-    global drawCircleBool, drawEightBool, targetX, targetY
-    if drawCircleBool == False:
-        drawCircleBool = True
-        BballDrawCircle["text"] = "Centrer la bille"
-    else:
-        drawCircleBool = False
-        targetX, targetY = 240, 240
-        sliderCoefP.set(sliderCoefPDefault)
-        BballDrawCircle["text"] = "Faire tourner la bille en cercle"
-
-drawEightBool = False
-def startDrawEight():
-    global drawEightBool, drawCircleBool, targetX, targetY
-    if drawEightBool == False:
-        drawEightBool = True
-        BballDrawEight["text"] = "Centrer la bille"
-    else:
-        drawEightBool = False
-        targetX, targetY = 240, 240
-        sliderCoefP.set(sliderCoefPDefault)
-        BballDrawEight["text"] = "Faire tourner la bille en huit"
-
 pointCounter = 0
-def drawWithBall():
+def setTargetForMovement():
     global pointCounter, targetX, targetY
-    if drawCircleBool == True:
+    if BallMovementMode.get() == MODE_CIRCLE:
         sliderCoefP.set(15)
         if pointCounter >= len(pointsListCircle):
             pointCounter = 0
         point = pointsListCircle[pointCounter]
         targetX, targetY = point[0], point[1]
         pointCounter += 7
-    if drawEightBool == True:
+    elif BallMovementMode.get() == MODE_EIGHT:
         sliderCoefP.set(15)
         if pointCounter >= len(pointsListEight):
             pointCounter = 0
@@ -209,30 +193,30 @@ def resetSlider():
 def donothing():
     pass
 
-def rangerPlateau():
+def lowerPlate():
     if arduinoIsConnected == True:
-        if tkinter.messagebox.askokcancel("Avertissement", "Remember to remove the plate"):
-            print("lowering arms")
+        if tkinter.messagebox.askokcancel("Alert", "Remember to remove the plate"):
+            print("Lowering arms")
             ser.write(("descendreBras\n").encode())
     else:
-        if tkinter.messagebox.askokcancel("Avertissement","Arduino is not connected"):
+        if tkinter.messagebox.askokcancel("Alert","Arduino is not connected"):
             donothing()
 
 
-def eleverPlateau():
+def raisePlate():
     global alpha
     if arduinoIsConnected == True:
-        if tkinter.messagebox.askokcancel("Avertissement", "Remember to remove the plate"):
+        if tkinter.messagebox.askokcancel("Alert", "Remember to remove the plate"):
             print("Raising arms")
             ser.write((str(dataDict[(0,0)])+"\n").encode())
             alpha = 0
     else:
-        if tkinter.messagebox.askokcancel("Avertissement","Arduino is not connected"):
+        if tkinter.messagebox.askokcancel("Alert","Arduino is not connected"):
             donothing()
 
 def servosTest():
     if arduinoIsConnected == True:
-        if tkinter.messagebox.askokcancel("Avertissement", "Le plateau doit être en place."):
+        if tkinter.messagebox.askokcancel("Alert", "The plate must be in place"):
             for i in range(2):
                 beta = 0
                 alpha = 35
@@ -245,7 +229,7 @@ def servosTest():
             time.sleep(1)
             ser.write((str(dataDict[(0,0)])+"\n").encode())
     else:
-        if tkinter.messagebox.askokcancel("Avertissement","L'Arduino n'est pas connecté"):
+        if tkinter.messagebox.askokcancel("Alert", "Arduino is not connected"):
             donothing()
 
 
@@ -270,12 +254,12 @@ def startBalance():
     if arduinoIsConnected == True:
         if startBalanceBall == False:
             startBalanceBall = True
-            BStartBalance["text"] = "Arrêter"
+            BStartBalance["text"] = "Stop"
         else:
             startBalanceBall = False
-            BStartBalance["text"] = "Commencer"
+            BStartBalance["text"] = "Start"
     else:
-        if tkinter.messagebox.askokcancel("Avertissement","L'Arduino n'est pas connecté"):
+        if tkinter.messagebox.askokcancel("Alert", "Arduino is not connected"):
             donothing()
 
 sommeErreurX = 1
@@ -351,12 +335,13 @@ def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY)
     alpha = prevAlpha * omega + (1-omega) * alpha
     beta = prevBeta * omega + (1-omega) * beta
 
-    alpha = round(round(alpha / 0.2) * 0.2, -int(floor(log10(0.2))))   ## permet d'arrondire avec 0.2 de précision
+    alpha = round(round(alpha / 0.2) * 0.2, -int(floor(log10(0.2))))   ## Round to +-0.2
     beta = round(round(beta / 0.2) * 0.2, -int(floor(log10(0.2))))
 
     if alpha <= 35 and beta <= 360 and arduinoIsConnected == True and startBalanceBall == True:
         ser.write((str(dataDict[(alpha,beta)])+"\n").encode())
 
+    #debugging lines:
     #print(alpha, beta)
     #print(Ix,Iy,alpha,beta,ballPosX,ballPosY,prevBallPosX,prevBallPosY,sommeErreurX,sommeErreurY)
 
@@ -400,9 +385,9 @@ def main():
     upperBound=np.array([H+sliderH.get(),S+sliderS.get(),V+sliderV.get()])
 
     mask=cv2.inRange(imgHSV,lowerBound,upperBound)
-    mask = cv2.blur(mask,(6,6))                        # ajoute du flou à l'image
-    mask = cv2.erode(mask, None, iterations=2)         # retire les parasites
-    mask = cv2.dilate(mask, None, iterations=2)        # retire les parasites
+    mask = cv2.blur(mask,(6,6))
+    mask = cv2.erode(mask, None, iterations=2)         # reduce noise
+    mask = cv2.dilate(mask, None, iterations=2)        # reduce noise
     
     cnts, hierarchy = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     center = None
@@ -438,7 +423,7 @@ def main():
         videoWindow.withdraw()
         BRetourVideo.configure(text="Open camera preview")
 
-    drawWithBall()
+    setTargetForMovement()
     if prevTargetX != targetX or prevTargetY != targetY:
         sommeErreurX, sommeErreurY = 0,0
 
@@ -488,10 +473,10 @@ sliderV.pack()
 
 FrameServosControl = tk.LabelFrame(controllerWindow, text="Servo control")
 FrameServosControl.place(x=20,y=315,width=380)
-BAbaissementPlateau = tk.Button(FrameServosControl, text="Lower plate", command=rangerPlateau)
-BAbaissementPlateau.pack()
-BElevationBras = tk.Button(FrameServosControl, text="Raise plate", command=eleverPlateau)
-BElevationBras.pack()
+BLowerPlate = tk.Button(FrameServosControl, text="Lower plate", command=lowerPlate)
+BLowerPlate.pack()
+BRaisePlate = tk.Button(FrameServosControl, text="Raise plate", command=raisePlate)
+BRaisePlate.pack()
 BTesterServos = tk.Button(FrameServosControl, text="Test servos", command=servosTest)
 BTesterServos.pack()
 BStartBalance = tk.Button(FrameServosControl, text="Start", command=startBalance, highlightbackground = "#36db8b")
@@ -516,13 +501,13 @@ sliderCoefD.pack()
 
 FrameBallControl = tk.LabelFrame(controllerWindow, text="Ball control")
 FrameBallControl.place(x=420,y=315,width=380, height= 132)
-BballDrawCircle = tk.Button(FrameBallControl, text="Faire tourner la bille en cercle", command=startDrawCircle)
-BballDrawCircle.pack()
-BballDrawEight = tk.Button(FrameBallControl, text="Faire tourner la bille en huit", command=startDrawEight)
-BballDrawEight.pack()
-
-
-
+BballHold = tk.Radiobutton(FrameBallControl, text="Hold the ball on target", value=MODE_HOLD_ON_TARGET)
+BballHold.pack()
+BballHold.select()
+BballCircle = tk.Radiobutton(FrameBallControl, text="Move the ball in a circle", value=MODE_CIRCLE)
+BballCircle.pack()
+BballEight = tk.Radiobutton(FrameBallControl, text="Move the ball in a figure eight", value=MODE_EIGHT)
+BballEight.pack()
 
 label = tk.Label(controllerWindow, text="Arduino disconnected  ", fg="red", anchor="ne")
 label.pack(fill="both")
