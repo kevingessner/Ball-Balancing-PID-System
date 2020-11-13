@@ -127,10 +127,10 @@ def toggleCameraFrameWindow():
     global showVideoWindow
     showVideoWindow = not showVideoWindow
 
-showCalqueCalibrationBool = False
-def showCalqueCalibration():
-    global showCalqueCalibrationBool
-    showCalqueCalibrationBool = not showCalqueCalibrationBool
+showAlignCalibrationBool = False
+def showAlignCalibration():
+    global showAlignCalibrationBool
+    showAlignCalibrationBool = not showAlignCalibrationBool
 
 showGraph = False
 def toggleGraphWindow():
@@ -398,7 +398,7 @@ def main():
     center = None
 
     cv2.circle(img, (int(targetX), int(targetY)), int(4),(255, 0, 0), 2)
-    if showCalqueCalibrationBool == True:
+    if showAlignCalibrationBool == True:
         cv2.circle(img, (240,240), 220,(255, 0, 0), 2)
         cv2.circle(img, (240,240), 160,(255, 0, 0), 2)
         cv2.line(img, (240, 240), (240, 240+160), (255,0,0), 2)
@@ -460,7 +460,7 @@ FPSLabel = tk.Label(FrameVideoInfo, text="FPS", anchor=tk.NW, pady=0)
 FPSLabel.pack(side=tk.LEFT, anchor=tk.W, padx=15, expand=True)
 BRetourVideo = tk.Button(FrameVideoInfo, text="", command=toggleCameraFrameWindow)
 BRetourVideo.pack(side=tk.LEFT)
-BPositionCalibration = tk.Button(FrameVideoInfo, text="Calque", command=showCalqueCalibration)
+BPositionCalibration = tk.Button(FrameVideoInfo, text="Align", command=showAlignCalibration)
 BPositionCalibration.pack(side=tk.LEFT, anchor=tk.E, padx=15)
 FrameVideoInfo.pack(fill=tk.X)
 
