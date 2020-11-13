@@ -66,6 +66,12 @@ graphCanvas = tk.Canvas(graphWindow, width=camHeight+210, height=camHeight)
 graphCanvas.pack()
 graphWindow.withdraw()
 
+servoTestWindow = tk.Toplevel(controllerWindow)
+servoTestWindow.title("Test servos")
+servoTestWindow.resizable(0, 0)
+servoTestWindow.withdraw()
+servoTestWindow.protocol("WM_DELETE_WINDOW", servoTestWindow.withdraw)
+
 pointsListCircle = []
 def createPointsListCircle(radius):
     global pointsListCircle
@@ -214,23 +220,21 @@ def raisePlate():
         if tkinter.messagebox.askokcancel("Alert","Arduino is not connected"):
             donothing()
 
-def servosTest():
-    if arduinoIsConnected == True:
-        if tkinter.messagebox.askokcancel("Alert", "The plate must be in place"):
-            for i in range(2):
-                beta = 0
-                alpha = 35
-                while beta < 360:
-                    ser.write((str(dataDict[(alpha,beta)])+"\n").encode())
-                    ser.flush()
-                    time.sleep(0.002)
-                    beta = round(beta+0.2,2)
-                    print(alpha,beta)
-            time.sleep(1)
-            ser.write((str(dataDict[(0,0)])+"\n").encode())
-    else:
+def showServoTester():
+    if not arduinoIsConnected:
         if tkinter.messagebox.askokcancel("Alert", "Arduino is not connected"):
             donothing()
+        return
+    if startBalanceBall:
+        startBalance() # stop running
+    servoTestWindow.deiconify()
+
+
+def setServosFromTest(varName, index, op):
+    # https://stackoverflow.com/questions/29690463/what-are-the-arguments-to-tkinter-variable-trace-method-callbacks
+    msg = str((float(testAngleA.get()), float(testAngleB.get()), float(testAngleC.get())))
+    print("setting servos to %s" % msg)
+    ser.write((msg + "\n").encode())
 
 
 arduinoIsConnected = False
@@ -252,6 +256,7 @@ startBalanceBall = False
 def startBalance():
     global startBalanceBall
     if arduinoIsConnected == True:
+        servoTestWindow.withdraw()
         if startBalanceBall == False:
             startBalanceBall = True
             BStartBalance["text"] = "Stop"
@@ -477,11 +482,31 @@ BLowerPlate = tk.Button(FrameServosControl, text="Lower plate", command=lowerPla
 BLowerPlate.pack()
 BRaisePlate = tk.Button(FrameServosControl, text="Raise plate", command=raisePlate)
 BRaisePlate.pack()
-BTesterServos = tk.Button(FrameServosControl, text="Test servos", command=servosTest)
+BTesterServos = tk.Button(FrameServosControl, text="Test servos...", command=showServoTester)
 BTesterServos.pack()
 BStartBalance = tk.Button(FrameServosControl, text="Start", command=startBalance, highlightbackground = "#36db8b")
 BStartBalance.pack()
 
+testServoSliderDefault = 50
+testAngleA = tk.DoubleVar()
+testAngleB = tk.DoubleVar()
+testAngleC = tk.DoubleVar()
+for var, label in ((testAngleA, "A"), (testAngleB, "B"), (testAngleC, "C")):
+    var.set(testServoSliderDefault)
+    var.trace("w", setServosFromTest)
+    slider = tk.Scale(
+        servoTestWindow,
+        from_=10,
+        to=100,
+        orient="horizontal",
+        label="Angle %s" % label,
+        length=350,
+        tickinterval = 30,
+        resolution=0.01,
+        variable=var,
+    )
+    slider.set(testServoSliderDefault)
+    slider.pack(padx=20, pady=10)
 
 
 FramePIDCoef = tk.LabelFrame(controllerWindow, text="PID coefficients")
