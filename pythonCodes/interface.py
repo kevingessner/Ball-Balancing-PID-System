@@ -496,8 +496,8 @@ for var, label in ((testAngleA, "A"), (testAngleB, "B"), (testAngleC, "C")):
     var.trace("w", setServosFromTest)
     slider = tk.Scale(
         servoTestWindow,
-        from_=10,
-        to=100,
+        from_=0,
+        to=130,
         orient="horizontal",
         label="Angle %s" % label,
         length=350,
