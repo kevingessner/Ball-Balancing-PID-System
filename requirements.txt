@@ -1,5 +1,6 @@
+wheel
 opencv-python>=4.4
-numpy
+numpy==1.19.3
 imutils
 Pillow
 pyserial
