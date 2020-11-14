@@ -94,14 +94,12 @@ pointCounter = 0
 def setTargetForMovement():
     global pointCounter, targetX, targetY
     if BallMovementMode.get() == MODE_CIRCLE:
-        sliderCoefP.set(15)
         if pointCounter >= len(pointsListCircle):
             pointCounter = 0
         point = pointsListCircle[pointCounter]
         targetX, targetY = point[0], point[1]
         pointCounter += 7
     elif BallMovementMode.get() == MODE_EIGHT:
-        sliderCoefP.set(15)
         if pointCounter >= len(pointsListEight):
             pointCounter = 0
         point = pointsListEight[pointCounter]
