@@ -182,11 +182,11 @@ def endProgam():
 
 
 sliderHDefault = 15
-sliderSDefault = 70
-sliderVDefault = 70
-sliderCoefPDefault = 10
-sliderCoefIDefault = 0.1
-sliderCoefDDefault = 5.7
+sliderSDefault = 15
+sliderVDefault = 15
+sliderCoefPDefault = 5.5
+sliderCoefIDefault = 0.085
+sliderCoefDDefault = 2.5
 
 def resetSlider():
     sliderH.set(sliderHDefault)
@@ -287,14 +287,16 @@ def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY)
     
     Ix = round(Ix/10000, 4)
     Iy = round(Iy/10000, 4)
+
+    sqixiy = sqrt(Ix**2 + Iy**2)
     
     if Ix == 0 and Iy == 0:
         alpha = 0
         beta = 0
-    
-    elif Ix != 0 and sqrt(Ix**2 + Iy**2) < 1:
+
+    elif Ix != 0 and sqixiy < 1:
         beta = atan(Iy/Ix)
-        alpha = asin(sqrt(Ix**2 + Iy**2))
+        alpha = asin(sqixiy)
         beta = degrees(beta)
         alpha = degrees(alpha)
         if Ix < 0 and Iy >= 0:
@@ -306,16 +308,16 @@ def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY)
         elif Ix < 0 and Iy <= 0:
             beta = 360-abs(beta)
 
-    elif Ix == 0 and sqrt(Ix**2 + Iy**2) < 1:
+    elif Ix == 0 and sqixiy < 1:
         if Iy > 0:
             beta = 90
-            alpha = asin(sqrt(Ix**2 + Iy**2))
+            alpha = asin(sqixiy)
         elif Iy < 0:
             beta = 270
-            alpha = asin(sqrt(Ix**2 + Iy**2))
+            alpha = asin(sqixiy)
         alpha = degrees(alpha)
 
-    elif Ix != 0 and sqrt(Ix**2 + Iy**2) > 1:
+    elif Ix != 0 and sqixiy > 1:
         beta = degrees(atan(Iy/Ix))
         alpha = 35
         if Ix < 0 and Iy >= 0:
@@ -327,7 +329,7 @@ def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY)
         elif Ix < 0 and Iy <= 0:
             beta = 360-abs(beta)
 
-    elif Ix == 0 and sqrt(Ix**2 + Iy**2) > 1:
+    elif Ix == 0 and sqixiy > 1:
         alpha = 35
         if Iy > 0:
             beta = 90
@@ -360,9 +362,10 @@ prevTargetX, prevTargetY = 0,0
 start_time = 0
 lastFPSUpdateTime = 0
 framesSinceUpdate = 0
+imgCircle = None
 def main():
     global H,S,V
-    global getPixelColor
+    global getPixelColor, imgCircle
     global x,y, alpha, beta
     global prevX, prevY, prevAlpha, prevBeta, prevTargetX, prevTargetY
     global targetX, targetY, sommeErreurX, sommeErreurY
@@ -371,7 +374,7 @@ def main():
     
     _, img=cam.read()
     img = img[0:int(camHeight),int((camWidth-camHeight)/2):int(camWidth-((camWidth-camHeight)/2))] #[Y1:Y2,X1:X2]
-    imgCircle = np.zeros(img.shape, dtype=np.uint8)
+    imgCircle = np.zeros(img.shape, dtype=np.uint8) if imgCircle is None else imgCircle
     cv2.circle(imgCircle, (240,240), 270, (255, 255, 255), -1, 8, 0)
     img = img & imgCircle
     imgHSV = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
@@ -385,7 +388,9 @@ def main():
         V = pixelColorOnClick[0,0,2]
         print(mouseX, mouseY)
         getPixelColor = False
-    
+
+    buildPreviewImage = showVideoWindow and framesSinceUpdate % 5 == 0
+
     lowerBound=np.array([H-sliderH.get(),S-sliderS.get(),V-sliderV.get()])
     upperBound=np.array([H+sliderH.get(),S+sliderS.get(),V+sliderV.get()])
 
@@ -398,7 +403,7 @@ def main():
     center = None
 
     cv2.circle(img, (int(targetX), int(targetY)), int(4),(255, 0, 0), 2)
-    if showAlignCalibrationBool == True:
+    if buildPreviewImage and showAlignCalibrationBool:
         cv2.circle(img, (240,240), 220,(255, 0, 0), 2)
         cv2.circle(img, (240,240), 160,(255, 0, 0), 2)
         cv2.line(img, (240, 240), (240, 240+160), (255,0,0), 2)
@@ -409,8 +414,9 @@ def main():
         timeInterval = time.time() - start_time
         (x, y), radius = cv2.minEnclosingCircle(c)
         if radius > 10:
-            cv2.putText(img,str(int(x)) + ";" + str(int(y)).format(0, 0),(int(x)-50, int(y)-50), cv2.FONT_HERSHEY_SIMPLEX,1, (255, 255, 255), 2)
-            cv2.circle(img, (int(x), int(y)), int(radius),(0, 255, 255), 2)
+            if buildPreviewImage:
+                cv2.putText(img,str(int(x)) + ";" + str(int(y)).format(0, 0),(int(x)-50, int(y)-50), cv2.FONT_HERSHEY_SIMPLEX,1, (255, 255, 255), 2)
+                cv2.circle(img, (int(x), int(y)), int(radius),(0, 255, 255), 2)
             PIDcontrol(int(x),int(y),prevX,prevY,targetX,targetY)
             start_time = time.time()
     else:
@@ -419,11 +425,12 @@ def main():
     if showVideoWindow:
         videoWindow.deiconify()
         BRetourVideo.configure(text="Close camera preview")
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = Image.fromarray(img)
-        imgtk = ImageTk.PhotoImage(image=img)
-        lmain.image = imgtk
-        lmain.configure(image=imgtk)
+        if buildPreviewImage:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            img = Image.fromarray(img)
+            imgtk = ImageTk.PhotoImage(image=img)
+            lmain.image = imgtk
+            lmain.configure(image=imgtk)
     else:
         videoWindow.withdraw()
         BRetourVideo.configure(text="Open camera preview")
@@ -448,7 +455,7 @@ def main():
 
     lmain.update()
     lmain.after_idle(main)
-    #lmain.after(50, main)
+    #lmain.after(10, main)
 
 
 
@@ -526,12 +533,12 @@ sliderCoefD.pack()
 
 FrameBallControl = tk.LabelFrame(controllerWindow, text="Ball control")
 FrameBallControl.place(x=420,y=315,width=380, height= 132)
-BballHold = tk.Radiobutton(FrameBallControl, text="Hold the ball on target", value=MODE_HOLD_ON_TARGET)
+BballHold = tk.Radiobutton(FrameBallControl, text="Hold the ball on target", value=MODE_HOLD_ON_TARGET, variable=BallMovementMode)
 BballHold.pack()
 BballHold.select()
-BballCircle = tk.Radiobutton(FrameBallControl, text="Move the ball in a circle", value=MODE_CIRCLE)
+BballCircle = tk.Radiobutton(FrameBallControl, text="Move the ball in a circle", value=MODE_CIRCLE, variable=BallMovementMode)
 BballCircle.pack()
-BballEight = tk.Radiobutton(FrameBallControl, text="Move the ball in a figure eight", value=MODE_EIGHT)
+BballEight = tk.Radiobutton(FrameBallControl, text="Move the ball in a figure eight", value=MODE_EIGHT, variable=BallMovementMode)
 BballEight.pack()
 
 label = tk.Label(controllerWindow, text="Arduino disconnected  ", fg="red", anchor="ne")

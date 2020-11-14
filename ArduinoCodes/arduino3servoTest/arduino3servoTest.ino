@@ -5,9 +5,9 @@ Servo servoB;
 Servo servoC;
 
 int ledTemoin = 13;  // changed from 8 so will use onboard LED
-float angleA = 15;
-float angleB = 15;
-float angleC = 15;
+float angleA = 35;
+float angleB = 35;
+float angleC = 35;
 //float angleA = 5;
 //float angleB = 5;
 //float angleC = 3;
@@ -18,20 +18,30 @@ int range = 840;
 void setup() {
   Serial.begin(19200);
   pinMode(ledTemoin, OUTPUT); // led indicator [ledTemoin]
-  digitalWrite(ledTemoin,HIGH);
+  // blink a noticeable pattern
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(ledTemoin,HIGH);
+    delay(25);
+    digitalWrite(ledTemoin,LOW);
+    delay(50);
+    digitalWrite(ledTemoin,HIGH);
+    delay(125);
+    digitalWrite(ledTemoin,LOW);
+    delay(250);
+  }
+  
   servoA.attach(9);     //servo A
   servoB.attach(11);    //servo B
   servoC.attach(10);    //servo C
-  delay(1000);
-    // playing with numbers
-  
+
   servoA.writeMicroseconds((range)*float(angleA)/90.0 + base);
   servoB.writeMicroseconds((range)*float(angleB)/90.0 + base);
   servoC.writeMicroseconds((range)*float(angleC)/90.0 + base);
   //servoA.writeMicroseconds((-2160+1260)*float(angleA)/90 + 2160);  //original numbers
   //servoB.writeMicroseconds((-1975+1130)*float(angleB)/90 + 1975);
   //servoC.writeMicroseconds((-1955+1130)*float(angleC)/90 + 1955);
-  }
+
+}
 
 int count = 0;
 
@@ -41,10 +51,9 @@ void loop() {
   if(Serial.available() > 0) {
     String a = Serial.readStringUntil('\n');
     if(a == "descendreBras"){     // arms fully down
-      angleA = 25;
-      angleB = 25;
-      angleC = 25;
-      //angleC = 3;
+      angleA = 0;
+      angleB = 0;
+      angleC = 0;
     }else{
       a.remove(0,1);
       a.remove(a.length() - 1,1); 
