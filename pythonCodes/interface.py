@@ -23,7 +23,10 @@ dataDict = {}
 
 camHeight = 480
 camWidth = 640
-cam = cv2.VideoCapture(0)
+try:
+    cam = cv2.VideoCapture(1)
+except:
+    cam = cv2.VideoCapture(1)
 cam.set(3,camWidth)
 cam.set(4,camHeight)
 
@@ -144,8 +147,9 @@ def paintGraph():
     global t,targetY,x,y,prevX,prevY,alpha,prevAlpha
     global showGraphPositionX,showGraphPositionY, showGraphAlpha
     if showGraph:
-        graphWindow.deiconify()
-        BafficherGraph.configure(text="Hide graph")
+        if graphWindow.state() != 'normal':
+            graphWindow.deiconify()
+            BafficherGraph.configure(text="Hide graph")
         if showGraphPositionX.get() == 1:
             graphCanvas.create_line(t-3,prevX,t,x, fill="#b20000", width=2)
         if showGraphPositionY.get() == 1:
@@ -167,9 +171,9 @@ def paintGraph():
             if showGraphPositionY.get() == 1:
                 graphCanvas.create_line(3,targetY,480,targetY,fill="#6f91f7", width=2)
         t += 3
-    else:
-        graphWindow.withdraw()
-        BafficherGraph.configure(text="Show graph")
+    elif graphWindow.state() != 'withdrawn':
+            graphWindow.withdraw()
+            BafficherGraph.configure(text="Show graph")
 
 def refreshGraph():
     global t
@@ -243,7 +247,7 @@ def connectArduino():
     ports = list(serial.tools.list_ports.comports())
     for p in ports:
         print("checking port %s" % p)
-        if "Arduino" in p.description or 'FT232' in p.description:
+        if "Arduino" in p.description or 'FT232' in p.description or 'USB Serial Port' in p.description:
             print('connecting port %s' % p)
             ser = serial.Serial(p[0], 19200, timeout=1)
             time.sleep(1) #give the connection a second to settle
@@ -421,15 +425,16 @@ def main():
         sommeErreurX, sommeErreurY = 0,0
 
     if showVideoWindow:
-        videoWindow.deiconify()
-        BRetourVideo.configure(text="Close camera preview")
+        if videoWindow.state() != 'normal':
+            videoWindow.deiconify()
+            BRetourVideo.configure(text="Close camera preview")
         if buildPreviewImage:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(img)
             imgtk = ImageTk.PhotoImage(image=img)
             lmain.image = imgtk
             lmain.configure(image=imgtk)
-    else:
+    elif videoWindow.state() != 'withdrawn':
         videoWindow.withdraw()
         BRetourVideo.configure(text="Open camera preview")
 
@@ -463,7 +468,7 @@ FrameVideoControl.place(x=20,y=20,width=380)
 FrameVideoInfo = tk.Frame(FrameVideoControl)
 FPSLabel = tk.Label(FrameVideoInfo, text="FPS", anchor=tk.NW, pady=0)
 FPSLabel.pack(side=tk.LEFT, anchor=tk.W, padx=15, expand=True)
-BRetourVideo = tk.Button(FrameVideoInfo, text="", command=toggleCameraFrameWindow)
+BRetourVideo = tk.Button(FrameVideoInfo, text="Open camera preview", command=toggleCameraFrameWindow)
 BRetourVideo.pack(side=tk.LEFT)
 BPositionCalibration = tk.Button(FrameVideoInfo, text="Align", command=showAlignCalibration)
 BPositionCalibration.pack(side=tk.LEFT, anchor=tk.E, padx=15)
@@ -516,7 +521,7 @@ for var, label in ((testAngleA, "A"), (testAngleB, "B"), (testAngleC, "C")):
 
 FramePIDCoef = tk.LabelFrame(controllerWindow, text="PID coefficients")
 FramePIDCoef.place(x=420,y=20,width=380)
-BafficherGraph = tk.Button(FramePIDCoef, text="", command=toggleGraphWindow)
+BafficherGraph = tk.Button(FramePIDCoef, text="Show graph", command=toggleGraphWindow)
 BafficherGraph.pack()
 sliderCoefP = tk.Scale(FramePIDCoef, from_=0, to=15, orient="horizontal", label="P", length=350, tickinterval = 3, resolution=0.01)
 sliderCoefP.set(sliderCoefPDefault)
@@ -564,6 +569,7 @@ CheckbuttonAlpha.place(x=500,y=60)
 
 
 videoWindow.protocol("WM_DELETE_WINDOW", toggleCameraFrameWindow)
+videoWindow.bind("<Button-3>", getMouseClickPosition)
 videoWindow.bind("<Button-2>", getMouseClickPosition)
 videoWindow.bind("<Button-1>", setTargetWithMouse)
 
