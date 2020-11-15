@@ -60,6 +60,9 @@ videoWindow.title("Preview")
 videoWindow.resizable(0, 0)  # window will resize to the image size
 lmain = tk.Label(videoWindow)
 lmain.pack()
+ShowMask = tk.BooleanVar()
+BShowMask = tk.Checkbutton(videoWindow, text="Show mask", variable=ShowMask)
+BShowMask.pack()
 videoWindow.withdraw()
 
 graphWindow = tk.Toplevel(controllerWindow)
@@ -115,6 +118,7 @@ def setTargetWithMouse(mousePosition):
     if mousePosition.y > 10:
         refreshGraph()
         targetX,targetY = mousePosition.x,mousePosition.y
+        print("set target %d, %s" % (targetX, targetY))
 
 
 def getMouseClickPosition(mousePosition):
@@ -404,21 +408,22 @@ def main():
     cnts, hierarchy = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     center = None
 
-    cv2.circle(img, (int(targetX), int(targetY)), int(4),(255, 0, 0), 2)
+    preview = mask if ShowMask.get() else img
+    cv2.circle(preview, (int(targetX), int(targetY)), int(4),(255, 0, 0), 2)
     if buildPreviewImage and showAlignCalibrationBool:
-        cv2.circle(img, (240,240), 220,(255, 0, 0), 2)
-        cv2.circle(img, (240,240), 160,(255, 0, 0), 2)
-        cv2.line(img, (240, 240), (240, 240+160), (255,0,0), 2)
-        cv2.line(img, (240, 240), (240+138, 240-80), (255,0,0), 2)
-        cv2.line(img, (240, 240), (240-138, 240-80), (255,0,0), 2)
+        cv2.circle(preview, (240,240), 220,(255, 0, 0), 2)
+        cv2.circle(preview, (240,240), 160,(255, 0, 0), 2)
+        cv2.line(preview, (240, 240), (240, 240+160), (255,0,0), 2)
+        cv2.line(preview, (240, 240), (240+138, 240-80), (255,0,0), 2)
+        cv2.line(preview, (240, 240), (240-138, 240-80), (255,0,0), 2)
     if len(cnts) > 0:
         c = max(cnts, key=cv2.contourArea)
         timeInterval = time.time() - start_time
         (x, y), radius = cv2.minEnclosingCircle(c)
-        if radius > 10:
+        if 20 < radius < 80:
             if buildPreviewImage:
-                cv2.putText(img,str(int(x)) + ";" + str(int(y)).format(0, 0),(int(x)-50, int(y)-50), cv2.FONT_HERSHEY_SIMPLEX,1, (255, 255, 255), 2)
-                cv2.circle(img, (int(x), int(y)), int(radius),(0, 255, 255), 2)
+                cv2.putText(preview, "%d;%d;%d" % (x, y, radius), (int(x)-50, int(y)-50), cv2.FONT_HERSHEY_SIMPLEX,1, (255, 255, 255), 2)
+                cv2.circle(preview, (int(x), int(y)), int(radius),(0, 255, 255), 2)
             PIDcontrol(int(x),int(y),prevX,prevY,targetX,targetY)
             start_time = time.time()
     else:
@@ -429,7 +434,7 @@ def main():
             videoWindow.deiconify()
             BRetourVideo.configure(text="Close camera preview")
         if buildPreviewImage:
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            img = cv2.cvtColor(preview, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(img)
             imgtk = ImageTk.PhotoImage(image=img)
             lmain.image = imgtk
@@ -571,7 +576,7 @@ CheckbuttonAlpha.place(x=500,y=60)
 videoWindow.protocol("WM_DELETE_WINDOW", toggleCameraFrameWindow)
 videoWindow.bind("<Button-3>", getMouseClickPosition)
 videoWindow.bind("<Button-2>", getMouseClickPosition)
-videoWindow.bind("<Button-1>", setTargetWithMouse)
+lmain.bind("<Button-1>", setTargetWithMouse)
 
 main()
 # Force the main window to the top
