@@ -360,7 +360,8 @@ def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY,
 
     #debugging lines:
     #print(alpha, beta)
-    #print(Ix,Iy,alpha,beta,ballPosX,ballPosY,prevBallPosX,prevBallPosY,sommeErreurX,sommeErreurY)
+    params = (Ix,Iy,alpha,beta,ballPosX,ballPosY,prevBallPosX,prevBallPosY,sommeErreurX,sommeErreurY)
+    print(" ".join(["% 0.5f"] * len(params)) % params)
 
     if startBalanceBall == True:
         sommeErreurX += (targetX-ballPosX)
@@ -430,8 +431,8 @@ def main():
                 cv2.putText(preview, "%d;%d;%d" % (ballPosX, ballPosY, radius), (ballPosX-50, ballPosY-50), cv2.FONT_HERSHEY_SIMPLEX,1, (255, 255, 255), 2)
                 cv2.circle(preview, (ballPosX, ballPosY), int(radius),(0, 255, 255), 2)
                 # Draw lines for the vectors used for PID control
-                cv2.line(preview, (ballPosX, ballPosY), (targetX, targetY), (255,255,0), 1) # P
-                cv2.line(preview, (ballPosX, ballPosY), (ballPosX + sommeErreurX, ballPosY + sommeErreurY), (0,255,0), 1) # I
+                cv2.line(preview, (ballPosX, ballPosY), (int(targetX), int(targetY)), (255,255,0), 1) # P
+                cv2.line(preview, (ballPosX, ballPosY), (int(ballPosX + sommeErreurX), int(ballPosY + sommeErreurY)), (0,255,0), 1) # I
                 cv2.line(preview, (ballPosX, ballPosY), (prevX, prevY), (255,0,255), 1) # D
             timeInterval = time.time() - start_time
             PIDcontrol(ballPosX,ballPosY,prevX,prevY,targetX,targetY, timeInterval)
