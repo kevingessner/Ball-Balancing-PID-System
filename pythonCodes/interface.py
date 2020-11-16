@@ -23,10 +23,11 @@ dataDict = {}
 
 camHeight = 480
 camWidth = 640
-try:
-    cam = cv2.VideoCapture(1)
-except:
-    cam = cv2.VideoCapture(1)
+print("Trying camera 1")
+cam = cv2.VideoCapture(1)
+if not cam.grab():
+    print("Trying camera 0")
+    cam = cv2.VideoCapture(0)
 cam.set(3,camWidth)
 cam.set(4,camHeight)
 
