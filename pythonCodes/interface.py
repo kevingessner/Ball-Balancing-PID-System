@@ -276,10 +276,9 @@ def startBalance():
 
 sommeErreurX = 1
 sommeErreurY = 1
-timeInterval = 1
 alpha, beta, prevAlpha, prevBeta = 0,0,0,0
 omega = 0.2
-def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY):
+def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY, timeInterval):
     global omega
     global sommeErreurX, sommeErreurY
     global alpha, beta, prevAlpha, prevBeta
@@ -289,8 +288,8 @@ def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY)
     Ki = sliderCoefI.get()
     Kd = sliderCoefD.get()
 
-    Ix = Kp*(targetX-ballPosX) + Ki*sommeErreurX + Kd*((prevBallPosX-ballPosX)/0.0333)
-    Iy = Kp*(targetY-ballPosY) + Ki*sommeErreurY + Kd*((prevBallPosY-ballPosY)/0.0333)
+    Ix = Kp*(targetX-ballPosX) + Ki*sommeErreurX + Kd*((prevBallPosX-ballPosX)/timeInterval)
+    Iy = Kp*(targetY-ballPosY) + Ki*sommeErreurY + Kd*((prevBallPosY-ballPosY)/timeInterval)
     
     Ix = round(Ix/10000, 4)
     Iy = round(Iy/10000, 4)
@@ -377,7 +376,7 @@ def main():
     global prevX, prevY, prevAlpha, prevBeta, prevTargetX, prevTargetY
     global targetX, targetY, sommeErreurX, sommeErreurY
     global camWidth,camHeight
-    global timeInterval, start_time, lastFPSUpdateTime, framesSinceUpdate
+    global start_time, lastFPSUpdateTime, framesSinceUpdate
     
     _, img=cam.read()
     img = img[0:int(camHeight),int((camWidth-camHeight)/2):int(camWidth-((camWidth-camHeight)/2))] #[Y1:Y2,X1:X2]
@@ -419,13 +418,13 @@ def main():
         cv2.line(preview, (240, 240), (240-138, 240-80), (255,0,0), 2)
     if len(cnts) > 0:
         c = max(cnts, key=cv2.contourArea)
-        timeInterval = time.time() - start_time
         (x, y), radius = cv2.minEnclosingCircle(c)
         if 20 < radius < 80:
             if buildPreviewImage:
                 cv2.putText(preview, "%d;%d;%d" % (x, y, radius), (int(x)-50, int(y)-50), cv2.FONT_HERSHEY_SIMPLEX,1, (255, 255, 255), 2)
                 cv2.circle(preview, (int(x), int(y)), int(radius),(0, 255, 255), 2)
-            PIDcontrol(int(x),int(y),prevX,prevY,targetX,targetY)
+            timeInterval = time.time() - start_time
+            PIDcontrol(int(x),int(y),prevX,prevY,targetX,targetY, timeInterval)
             start_time = time.time()
     else:
         sommeErreurX, sommeErreurY = 0,0
