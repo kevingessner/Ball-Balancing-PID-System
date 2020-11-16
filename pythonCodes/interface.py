@@ -274,15 +274,17 @@ def startBalance():
         if tkinter.messagebox.askokcancel("Alert", "Arduino is not connected"):
             donothing()
 
-sommeErreurX = 1
-sommeErreurY = 1
+sommeErreurX = 0
+sommeErreurY = 0
 alpha, beta, prevAlpha, prevBeta = 0,0,0,0
+deltaX, deltaY = 0, 0
 omega = 0.2
 def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY, timeInterval):
     global omega
     global sommeErreurX, sommeErreurY
     global alpha, beta, prevAlpha, prevBeta
     global startBalanceBall, arduinoIsConnected
+    global deltaX, deltaY
     
     Kp = sliderCoefP.get()
     Ki = sliderCoefI.get()
@@ -290,6 +292,8 @@ def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY,
 
     Ix = Kp*(targetX-ballPosX) + Ki*sommeErreurX + Kd*((prevBallPosX-ballPosX)/timeInterval)
     Iy = Kp*(targetY-ballPosY) + Ki*sommeErreurY + Kd*((prevBallPosY-ballPosY)/timeInterval)
+    deltaX = int(Ix)
+    deltaY = int(Iy)
     
     Ix = round(Ix/10000, 4)
     Iy = round(Iy/10000, 4)
@@ -420,12 +424,21 @@ def main():
         c = max(cnts, key=cv2.contourArea)
         (x, y), radius = cv2.minEnclosingCircle(c)
         if 20 < radius < 80:
+            ballPosX = int(x)
+            ballPosY = int(y)
             if buildPreviewImage:
-                cv2.putText(preview, "%d;%d;%d" % (x, y, radius), (int(x)-50, int(y)-50), cv2.FONT_HERSHEY_SIMPLEX,1, (255, 255, 255), 2)
-                cv2.circle(preview, (int(x), int(y)), int(radius),(0, 255, 255), 2)
+                cv2.putText(preview, "%d;%d;%d" % (ballPosX, ballPosY, radius), (ballPosX-50, ballPosY-50), cv2.FONT_HERSHEY_SIMPLEX,1, (255, 255, 255), 2)
+                cv2.circle(preview, (ballPosX, ballPosY), int(radius),(0, 255, 255), 2)
+                # Draw lines for the vectors used for PID control
+                cv2.line(preview, (ballPosX, ballPosY), (targetX, targetY), (255,255,0), 1) # P
+                cv2.line(preview, (ballPosX, ballPosY), (ballPosX + sommeErreurX, ballPosY + sommeErreurY), (0,255,0), 1) # I
+                cv2.line(preview, (ballPosX, ballPosY), (prevX, prevY), (255,0,255), 1) # D
             timeInterval = time.time() - start_time
-            PIDcontrol(int(x),int(y),prevX,prevY,targetX,targetY, timeInterval)
+            PIDcontrol(ballPosX,ballPosY,prevX,prevY,targetX,targetY, timeInterval)
             start_time = time.time()
+            if buildPreviewImage:
+                # The effective vector that the control is sending the ball
+                cv2.line(preview, (ballPosX, ballPosY), (ballPosX + deltaX, ballPosY + deltaY), (0,0,0), 1) # D
     else:
         sommeErreurX, sommeErreurY = 0,0
 
