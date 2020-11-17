@@ -360,7 +360,7 @@ def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY,
 
     #debugging lines:
     #print(alpha, beta)
-    params = (Ix,Iy,alpha,beta,ballPosX,ballPosY,prevBallPosX,prevBallPosY,sommeErreurX,sommeErreurY)
+    params = (Ix,Iy,alpha,beta,ballPosX,ballPosY,prevBallPosX,prevBallPosY,sommeErreurX,sommeErreurY,timeInterval)
     print(" ".join(["% 0.5f"] * len(params)) % params)
 
     if startBalanceBall == True:
@@ -436,12 +436,14 @@ def main():
                 cv2.line(preview, (ballPosX, ballPosY), (prevX, prevY), (255,0,255), 1) # D
             timeInterval = time.time() - start_time
             PIDcontrol(ballPosX,ballPosY,prevX,prevY,targetX,targetY, timeInterval)
-            start_time = time.time()
             if buildPreviewImage:
                 # The effective vector that the control is sending the ball
                 cv2.line(preview, (ballPosX, ballPosY), (ballPosX + deltaX, ballPosY + deltaY), (0,0,0), 1) # D
+        else:
+            sommeErreurX, sommeErreurY = 0,0
     else:
         sommeErreurX, sommeErreurY = 0,0
+    start_time = time.time()
 
     if showVideoWindow:
         if videoWindow.state() != 'normal':
