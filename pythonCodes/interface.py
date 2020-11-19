@@ -10,6 +10,15 @@ import serial.tools.list_ports
 from math import *
 import os
 import sys
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--camera", help="cv2 camera index", type=int, default=-1)
+parser.add_argument("--hsv", help="h,s,v color values", type=str, default='0,0,0')
+parser.add_argument("--hsv_sens", help="h,s,v sensitivity values", type=str, default='15,15,15')
+parser.add_argument("--pid", help="p,i,d values", type=str, default='5.5,0.085,2.5')
+parser.add_argument("--verbose", help="verbose output", action="store_true")
+args = parser.parse_args()
 
 
 dataPath = os.path.join(os.path.dirname(sys.argv[0]), "data.txt")
@@ -23,16 +32,20 @@ dataDict = {}
 
 camHeight = 480
 camWidth = 640
-print("Trying camera 1")
-cam = cv2.VideoCapture(1)
-if not cam.grab():
-    print("Trying camera 0")
-    cam = cv2.VideoCapture(0)
+if args.camera == -1:
+    print("Trying camera 1")
+    cam = cv2.VideoCapture(1)
+    if not cam.grab():
+        print("Trying camera 0")
+        cam = cv2.VideoCapture(0)
+else:
+    print("Trying camera %d" % args.camera)
+    cam = cv2.VideoCapture(args.camera)
 cam.set(3,camWidth)
 cam.set(4,camHeight)
 
 getPixelColor = False
-H,S,V = 0,0,0
+H,S,V = map(int, args.hsv.split(','))
 
 mouseX,mouseY = 0,0
 
@@ -188,12 +201,8 @@ def endProgam():
     controllerWindow.destroy()
 
 
-sliderHDefault = 15
-sliderSDefault = 15
-sliderVDefault = 15
-sliderCoefPDefault = 5.5
-sliderCoefIDefault = 0.085
-sliderCoefDDefault = 2.5
+sliderHDefault, sliderSDefault, sliderVDefault = map(int, args.hsv_sens.split(','))
+sliderCoefPDefault, sliderCoefIDefault, sliderCoefDDefault = map(float, args.pid.split(','))
 
 def resetSlider():
     sliderH.set(sliderHDefault)
@@ -359,9 +368,10 @@ def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY,
         ser.write((str(dataDict[(alpha,beta)])+"\n").encode())
 
     #debugging lines:
-    #print(alpha, beta)
-    params = (Ix,Iy,alpha,beta,ballPosX,ballPosY,prevBallPosX,prevBallPosY,sommeErreurX,sommeErreurY,timeInterval)
-    print(" ".join(["% 0.5f"] * len(params)) % params)
+    if args.verbose:
+        #print(alpha, beta)
+        params = (Ix,Iy,alpha,beta,ballPosX,ballPosY,prevBallPosX,prevBallPosY,sommeErreurX,sommeErreurY,timeInterval)
+        print(" ".join(["% 0.5f"] * len(params)) % params)
 
     if startBalanceBall == True:
         sommeErreurX += (targetX-ballPosX)
@@ -397,7 +407,7 @@ def main():
         H = pixelColorOnClick[0,0,0]
         S = pixelColorOnClick[0,0,1]
         V = pixelColorOnClick[0,0,2]
-        print(mouseX, mouseY)
+        print("color at %d,%d: %d %d %d" % (mouseX, mouseY, H, S, V))
         getPixelColor = False
 
     buildPreviewImage = showVideoWindow and framesSinceUpdate % 5 == 0
@@ -581,7 +591,7 @@ CheckbuttonPositionX = tk.Checkbutton(graphWindow, text="X", variable=showGraphP
 CheckbuttonPositionX.place(x=500,y=20)
 showGraphPositionY = tk.IntVar()
 showGraphPositionY.set(1)
-CheckbuttonPositionY = tk.Checkbutton(graphWindow, text="X", variable=showGraphPositionY, command=refreshGraph)
+CheckbuttonPositionY = tk.Checkbutton(graphWindow, text="Y", variable=showGraphPositionY, command=refreshGraph)
 CheckbuttonPositionY.place(x=500,y=40)
 showGraphAlpha = tk.IntVar()
 CheckbuttonAlpha = tk.Checkbutton(graphWindow, text="Plate angle", variable=showGraphAlpha, command=refreshGraph)
