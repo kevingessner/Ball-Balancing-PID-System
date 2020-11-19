@@ -18,6 +18,7 @@ parser.add_argument("--hsv", help="h,s,v color values", type=str, default='0,0,0
 parser.add_argument("--hsv_sens", help="h,s,v sensitivity values", type=str, default='15,15,15')
 parser.add_argument("--pid", help="p,i,d values", type=str, default='5.5,0.085,2.5')
 parser.add_argument("--verbose", help="verbose output", action="store_true")
+parser.add_argument("--rolling_d", help="smooth derivative with weighted average over this number of frames", type=int, default=1)
 args = parser.parse_args()
 
 
@@ -288,19 +289,43 @@ sommeErreurY = 0
 alpha, beta, prevAlpha, prevBeta = 0,0,0,0
 deltaX, deltaY = 0, 0
 omega = 0.2
+
+# Used for derivative smoothing when --rolling_d > 1.
+# N recent entries of (dx, dy), newest to oldest.
+prevDXY = np.zeros((args.rolling_d, 2))
+dxyFactor = 0.2
+# Weights for weighted mean: create descending values, `newaxis` into a column, and scale
+dxyWeights = (dxyFactor ** np.arange(args.rolling_d))[:, np.newaxis]
+dxyWeights /= sum(dxyWeights)
+
 def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY, timeInterval):
     global omega
     global sommeErreurX, sommeErreurY
     global alpha, beta, prevAlpha, prevBeta
     global startBalanceBall, arduinoIsConnected
-    global deltaX, deltaY
-    
+    global deltaX, deltaY, prevDXY
+
     Kp = sliderCoefP.get()
     Ki = sliderCoefI.get()
     Kd = sliderCoefD.get()
 
-    Ix = Kp*(targetX-ballPosX) + Ki*sommeErreurX + Kd*((prevBallPosX-ballPosX)/timeInterval)
-    Iy = Kp*(targetY-ballPosY) + Ki*sommeErreurY + Kd*((prevBallPosY-ballPosY)/timeInterval)
+    dx = (prevBallPosX-ballPosX)
+    dy = (prevBallPosY-ballPosY)
+    # If requested, smooth the dx/dy with an exponentially-decaying weighted average of recent values.  The most recent
+    # is given the most weight, the next less weight, and so on.  Adjust `dxyFactor` above between 0.0 and 1.0 to change the weighting:
+    # older terms have more relative impact with higher factor.
+    if args.rolling_d > 1:
+        # Shift entries back, dropping the oldest
+        prevDXY = np.roll(prevDXY, 1, axis=0)
+        # Insert the newest
+        prevDXY[0] = (dx, dy)
+        # Multiply by weights (the X and Y columns independently), then sum by column
+        (dx, dy) = np.sum(prevDXY * dxyWeights, axis=0)
+        print(prevDXY, dx, dy)
+
+
+    Ix = Kp*(targetX-ballPosX) + Ki*sommeErreurX + Kd*(dx/timeInterval)
+    Iy = Kp*(targetY-ballPosY) + Ki*sommeErreurY + Kd*(dy/timeInterval)
     deltaX = int(Ix)
     deltaY = int(Iy)
     
@@ -431,10 +456,12 @@ def main():
         cv2.line(preview, (240, 240), (240, 240+160), (255,0,0), 2)
         cv2.line(preview, (240, 240), (240+138, 240-80), (255,0,0), 2)
         cv2.line(preview, (240, 240), (240-138, 240-80), (255,0,0), 2)
+    ok = False
     if len(cnts) > 0:
         c = max(cnts, key=cv2.contourArea)
         (x, y), radius = cv2.minEnclosingCircle(c)
         if 20 < radius < 80:
+            ok = True
             ballPosX = int(x)
             ballPosY = int(y)
             if buildPreviewImage:
@@ -474,10 +501,11 @@ def main():
         sommeErreurX, sommeErreurY = 0,0
 
     paintGraph()
-    prevX,prevY = int(x), int(y)
-    prevTargetX, prevTargetY = targetX, targetY
-    prevAlpha = alpha
-    prevBeta = beta
+    if ok:
+        prevX,prevY = int(x), int(y)
+        prevTargetX, prevTargetY = targetX, targetY
+        prevAlpha = alpha
+        prevBeta = beta
 
     framesSinceUpdate += 1
     now = time.time()
