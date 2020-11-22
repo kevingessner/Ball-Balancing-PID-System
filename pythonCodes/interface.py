@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--camera", help="cv2 camera index", type=int, default=-1)
 parser.add_argument("--hsv", help="h,s,v color values", type=str, default='0,0,0')
 parser.add_argument("--hsv_sens", help="h,s,v sensitivity values", type=str, default='15,15,15')
-parser.add_argument("--pid", help="p,i,d values", type=str, default='5.5,0.085,2.5')
+parser.add_argument("--pid", help="p,i,d values", type=str, default='5.5,2.5,2.5')
 parser.add_argument("--verbose", help="verbose output", action="store_true")
 parser.add_argument("--rolling_d", help="smooth derivative with weighted average over this number of frames", type=int, default=0)
 parser.add_argument("--median_d", help="smooth derivative with median over this number of frames", type=int, default=0)
@@ -316,8 +316,13 @@ def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY,
     Ki = sliderCoefI.get()
     Kd = sliderCoefD.get()
 
-    dx = (prevBallPosX-ballPosX)
-    dy = (prevBallPosY-ballPosY)
+    if timeInterval == 0.0:
+        timeInterval = 1.0/60
+
+    ex = targetX-ballPosX
+    ey = targetY-ballPosY
+    dx = (prevBallPosX-ballPosX)/timeInterval
+    dy = (prevBallPosY-ballPosY)/timeInterval
     # If requested, smooth the dx/dy with an exponentially-decaying weighted average of recent values.  The most recent
     # is given the most weight, the next less weight, and so on.  Adjust `dxyFactor` above between 0.0 and 1.0 to change the weighting:
     # older terms have more relative impact with higher factor.
@@ -329,13 +334,13 @@ def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY,
         if args.rolling_d > 1:
             # Multiply by weights (the X and Y columns independently), then sum by column
             (dx, dy) = np.sum(prevDXY * dxyWeights, axis=0)
-            print(prevDXY, dx, dy)
+            #print(prevDXY, dx, dy)
         elif args.median_d > 1:
             (dx, dy) = np.median(prevDXY, axis=0)
             print(prevDXY, dx, dy)
 
-    Ix = Kp*(targetX-ballPosX) + Ki*sommeErreurX + Kd*(dx/timeInterval)
-    Iy = Kp*(targetY-ballPosY) + Ki*sommeErreurY + Kd*(dy/timeInterval)
+    Ix = Kp*ex + Ki*sommeErreurX + Kd*dx
+    Iy = Kp*ey + Ki*sommeErreurY + Kd*dy
     deltaX = int(Ix)
     deltaY = int(Iy)
     
@@ -409,8 +414,8 @@ def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY,
         print(" ".join(["% 0.5f"] * len(params)) % params)
 
     if startBalanceBall == True:
-        sommeErreurX += (targetX-ballPosX)
-        sommeErreurY += (targetY-ballPosY)
+        sommeErreurX += ex*timeInterval
+        sommeErreurY += ey*timeInterval
 
 
 prevX,prevY = 0,0
@@ -595,7 +600,7 @@ BafficherGraph.pack()
 sliderCoefP = tk.Scale(FramePIDCoef, from_=0, to=15, orient="horizontal", label="P", length=350, tickinterval = 3, resolution=0.01)
 sliderCoefP.set(sliderCoefPDefault)
 sliderCoefP.pack()
-sliderCoefI = tk.Scale(FramePIDCoef, from_=0, to=1, orient="horizontal", label="I", length=350, tickinterval = 0.2, resolution=0.001)
+sliderCoefI = tk.Scale(FramePIDCoef, from_=0, to=15, orient="horizontal", label="I", length=350, tickinterval = 3, resolution=0.01)
 sliderCoefI.set(sliderCoefIDefault)
 sliderCoefI.pack()
 sliderCoefD = tk.Scale(FramePIDCoef, from_=0, to=10, orient="horizontal", label="D", length=350, tickinterval = 2, resolution=0.01)
