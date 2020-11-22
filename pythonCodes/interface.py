@@ -18,7 +18,8 @@ parser.add_argument("--hsv", help="h,s,v color values", type=str, default='0,0,0
 parser.add_argument("--hsv_sens", help="h,s,v sensitivity values", type=str, default='15,15,15')
 parser.add_argument("--pid", help="p,i,d values", type=str, default='5.5,0.085,2.5')
 parser.add_argument("--verbose", help="verbose output", action="store_true")
-parser.add_argument("--rolling_d", help="smooth derivative with weighted average over this number of frames", type=int, default=1)
+parser.add_argument("--rolling_d", help="smooth derivative with weighted average over this number of frames", type=int, default=0)
+parser.add_argument("--median_d", help="smooth derivative with median over this number of frames", type=int, default=0)
 args = parser.parse_args()
 
 
@@ -292,11 +293,17 @@ omega = 0.2
 
 # Used for derivative smoothing when --rolling_d > 1.
 # N recent entries of (dx, dy), newest to oldest.
-prevDXY = np.zeros((args.rolling_d, 2))
-dxyFactor = 0.2
-# Weights for weighted mean: create descending values, `newaxis` into a column, and scale
-dxyWeights = (dxyFactor ** np.arange(args.rolling_d))[:, np.newaxis]
-dxyWeights /= sum(dxyWeights)
+prevDXY = None
+if args.rolling_d > 1:
+    if args.median_d:
+        raise('Only one of rolling_d or median_d at a time')
+    prevDXY = np.zeros((args.rolling_d, 2))
+    dxyFactor = 0.2
+    # Weights for weighted mean: create descending values, `newaxis` into a column, and scale
+    dxyWeights = (dxyFactor ** np.arange(args.rolling_d))[:, np.newaxis]
+    dxyWeights /= sum(dxyWeights)
+elif args.median_d > 1:
+    prevDXY = np.zeros((args.median_d, 2))
 
 def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY, timeInterval):
     global omega
@@ -314,15 +321,18 @@ def PIDcontrol(ballPosX, ballPosY, prevBallPosX, prevBallPosY, targetX, targetY,
     # If requested, smooth the dx/dy with an exponentially-decaying weighted average of recent values.  The most recent
     # is given the most weight, the next less weight, and so on.  Adjust `dxyFactor` above between 0.0 and 1.0 to change the weighting:
     # older terms have more relative impact with higher factor.
-    if args.rolling_d > 1:
+    if prevDXY is not None:
         # Shift entries back, dropping the oldest
         prevDXY = np.roll(prevDXY, 1, axis=0)
         # Insert the newest
         prevDXY[0] = (dx, dy)
-        # Multiply by weights (the X and Y columns independently), then sum by column
-        (dx, dy) = np.sum(prevDXY * dxyWeights, axis=0)
-        print(prevDXY, dx, dy)
-
+        if args.rolling_d > 1:
+            # Multiply by weights (the X and Y columns independently), then sum by column
+            (dx, dy) = np.sum(prevDXY * dxyWeights, axis=0)
+            print(prevDXY, dx, dy)
+        elif args.median_d > 1:
+            (dx, dy) = np.median(prevDXY, axis=0)
+            print(prevDXY, dx, dy)
 
     Ix = Kp*(targetX-ballPosX) + Ki*sommeErreurX + Kd*(dx/timeInterval)
     Iy = Kp*(targetY-ballPosY) + Ki*sommeErreurY + Kd*(dy/timeInterval)
