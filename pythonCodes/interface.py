@@ -167,7 +167,7 @@ def paintGraph():
     global t,targetY,x,y,prevX,prevY,alpha,prevAlpha
     global showGraphPositionX,showGraphPositionY, showGraphAlpha
     if showGraph:
-        if graphWindow.state() != 'normal':
+        if graphWindow.state() not in ('normal', 'zoomed'):
             graphWindow.deiconify()
             BafficherGraph.configure(text="Hide graph")
         if showGraphPositionX.get() == 1:
@@ -498,7 +498,7 @@ def main():
     start_time = time.time()
 
     if showVideoWindow:
-        if videoWindow.state() != 'normal':
+        if videoWindow.state() not in ('normal', 'zoomed'):
             videoWindow.deiconify()
             BRetourVideo.configure(text="Close camera preview")
         if buildPreviewImage:
