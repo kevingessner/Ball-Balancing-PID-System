@@ -18,6 +18,7 @@ parser.add_argument("--hsv", help="h,s,v color values", type=str, default='0,0,0
 parser.add_argument("--hsv_sens", help="h,s,v sensitivity values", type=str, default='15,15,15')
 parser.add_argument("--pid", help="p,i,d values", type=str, default='5.5,2.5,2.5')
 parser.add_argument("--verbose", help="verbose output", action="store_true")
+parser.add_argument("--connect", help="connect immediately", action="store_true")
 args = parser.parse_args()
 
 
@@ -228,10 +229,9 @@ def lowerPlate():
 def raisePlate():
     global alpha
     if arduinoIsConnected == True:
-        if tkinter.messagebox.askokcancel("Alert", "Remember to remove the plate"):
-            print("Raising arms")
-            ser.write((str(dataDict[(0,0)])+"\n").encode())
-            alpha = 0
+        print("Raising arms")
+        ser.write((str(dataDict[(0,0)])+"\n").encode())
+        alpha = 0
     else:
         if tkinter.messagebox.askokcancel("Alert","Arduino is not connected"):
             donothing()
@@ -413,14 +413,16 @@ start_time = 0
 lastFPSUpdateTime = 0
 framesSinceUpdate = 0
 imgCircle = None
+framesSinceBallFound = 0
 def main():
     global H,S,V
     global getPixelColor, imgCircle
     global x,y, alpha, beta
     global prevX, prevY, prevAlpha, prevBeta, prevTargetX, prevTargetY
+    global prevDXY
     global targetX, targetY, sommeErreurX, sommeErreurY
     global camWidth,camHeight
-    global start_time, lastFPSUpdateTime, framesSinceUpdate
+    global start_time, lastFPSUpdateTime, framesSinceUpdate, framesSinceBallFound
     
     _, img=cam.read()
     img = img[0:int(camHeight),int((camWidth-camHeight)/2):int(camWidth-((camWidth-camHeight)/2))] #[Y1:Y2,X1:X2]
@@ -468,6 +470,7 @@ def main():
             ok = True
             ballPosX = int(x)
             ballPosY = int(y)
+            framesSinceBallFound = 0
             if buildPreviewImage:
                 cv2.putText(preview, "%d;%d;%d" % (ballPosX, ballPosY, radius), (ballPosX-50, ballPosY-50), cv2.FONT_HERSHEY_SIMPLEX,1, (255, 255, 255), 2)
                 cv2.circle(preview, (ballPosX, ballPosY), int(radius),(0, 255, 255), 2)
@@ -480,10 +483,12 @@ def main():
             if buildPreviewImage:
                 # The effective vector that the control is sending the ball
                 cv2.line(preview, (ballPosX, ballPosY), (ballPosX + deltaX, ballPosY + deltaY), (0,0,0), 1) # D
-        else:
-            sommeErreurX, sommeErreurY = 0,0
-    else:
+    if not ok:
+        # We lost the ball. Reset the accumulated error and derivative history to not throw off the calculation when we
+        # find it again at some pount.
         sommeErreurX, sommeErreurY = 0,0
+        prevDXY = np.zeros((rolling_d_points, 2))
+        framesSinceBallFound += 1
     start_time = time.time()
 
     if showVideoWindow:
@@ -503,6 +508,10 @@ def main():
     setTargetForMovement()
     if prevTargetX != targetX or prevTargetY != targetY:
         sommeErreurX, sommeErreurY = 0,0
+
+    # We've lost the ball for a while.  Reset the plate.
+    if framesSinceBallFound == 150 and arduinoIsConnected:
+        raisePlate()
 
     paintGraph()
     if ok:
@@ -644,6 +653,9 @@ main()
 # TODO make it focussed
 controllerWindow.call('wm', 'attributes', '.', '-topmost', '1')
 controllerWindow.call('wm', 'attributes', '.', '-topmost', '0')
+
+if args.connect:
+    connectArduino()
 
 tk.mainloop()
 
