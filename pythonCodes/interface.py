@@ -77,7 +77,10 @@ lmain = tk.Label(videoWindow)
 lmain.pack()
 ShowMask = tk.BooleanVar()
 BShowMask = tk.Checkbutton(videoWindow, text="Show mask", variable=ShowMask)
-BShowMask.pack()
+BShowMask.pack(side=tk.LEFT, anchor=tk.E,)
+ShowAlign = tk.BooleanVar()
+BShowAlign = tk.Checkbutton(videoWindow, text="Show align", variable=ShowAlign)
+BShowAlign.pack(side=tk.LEFT, anchor=tk.E, padx=15)
 videoWindow.withdraw()
 
 graphWindow = tk.Toplevel(controllerWindow)
@@ -146,11 +149,6 @@ showVideoWindow = False
 def toggleCameraFrameWindow():
     global showVideoWindow
     showVideoWindow = not showVideoWindow
-
-showAlignCalibrationBool = False
-def showAlignCalibration():
-    global showAlignCalibrationBool
-    showAlignCalibrationBool = not showAlignCalibrationBool
 
 showGraph = False
 def toggleGraphWindow():
@@ -456,7 +454,7 @@ def main():
 
     preview = mask if ShowMask.get() else img
     cv2.circle(preview, (int(targetX), int(targetY)), int(4),(255, 0, 0), 2)
-    if buildPreviewImage and showAlignCalibrationBool:
+    if buildPreviewImage and ShowAlign.get():
         cv2.circle(preview, (240,240), 220,(255, 0, 0), 2)
         cv2.circle(preview, (240,240), 160,(255, 0, 0), 2)
         cv2.line(preview, (240, 240), (240, 240+160), (255,0,0), 2)
@@ -539,12 +537,10 @@ FrameVideoControl.place(x=20,y=20,width=380)
 
 FrameVideoInfo = tk.Frame(FrameVideoControl)
 FPSLabel = tk.Label(FrameVideoInfo, text="FPS", anchor=tk.NW, pady=0)
-FPSLabel.pack(side=tk.LEFT, anchor=tk.W, padx=15, expand=True)
+FPSLabel.pack(side=tk.LEFT, anchor=tk.W, expand=True)
 BRetourVideo = tk.Button(FrameVideoInfo, text="Open camera preview", command=toggleCameraFrameWindow)
 BRetourVideo.pack(side=tk.LEFT)
-BPositionCalibration = tk.Button(FrameVideoInfo, text="Align", command=showAlignCalibration)
-BPositionCalibration.pack(side=tk.LEFT, anchor=tk.E, padx=15)
-FrameVideoInfo.pack(fill=tk.X)
+FrameVideoInfo.pack(fill=tk.X, padx=15)
 
 sliderH = tk.Scale(FrameVideoControl, from_=0, to=100, orient="horizontal", label="Sensitivity H", length=350, tickinterval = 10)
 sliderH.set(sliderHDefault)
